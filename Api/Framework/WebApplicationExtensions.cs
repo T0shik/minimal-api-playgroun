@@ -6,107 +6,65 @@ namespace Api.Framework
 {
     public static class WebApplicationExtensions
     {
-        public static WebApplicationBuilder AddServices<T>(this WebApplicationBuilder builder)
-        {
-            var services = typeof(T).Assembly.GetTypes()
-                .Select(t => (t, t.BaseType))
-                .Where((tuple) => tuple.BaseType != null)
-                .Where((tuple) => tuple.BaseType.IsGenericType && tuple.BaseType.GetGenericTypeDefinition().IsEquivalentTo(typeof(Handler<,>)));
-
-            foreach (var s in services)
-            {
-                builder.Services.AddTransient(s.Item2, s.Item1);
-            }
-
-            return builder;
-        }
-
-        public static WebApplicationBuilder AddValidation<T>(this WebApplicationBuilder builder)
-        {
-            var validators = typeof(Blog).Assembly.GetTypes()
-                .Select(t => (t, t.BaseType))
-                .Where((tuple) => tuple.BaseType != null)
-                .Where((tuple) => tuple.BaseType.IsGenericType
-                    && tuple.BaseType.IsAbstract
-                    && tuple.BaseType.GetGenericTypeDefinition().IsEquivalentTo(typeof(AbstractValidator<>)))
-                .Select((tuple) => (tuple.t, tuple.BaseType.GetGenericArguments()[0]));
-
-            foreach (var v in validators)
-            {
-                var validorInterfaceType = typeof(IValidator<>).MakeGenericType(v.Item2);
-                builder.Services.AddTransient(validorInterfaceType, v.Item1);
-            }
-
-            return builder;
-        }
-
-        public static IEndpointConventionBuilder MapGet<TResponse>(
+        public static IEndpointConventionBuilder MapGet<TRequest>(
             this WebApplication app,
-            string pattern,
-            IRequest<TResponse> request
+            string pattern
             )
+            where TRequest : IRequest, new()
         {
-            return app.MapGet(pattern, CreateRequestDelegate(request));
+            return app.MapGet(pattern, CreateRequestDelegate<TRequest>);
         }
 
-        public static IEndpointConventionBuilder MapPost<TResponse>(
+        public static IEndpointConventionBuilder MapPost<TRequest>(
             this WebApplication app,
-            string pattern,
-            IRequest<TResponse> request
+            string pattern
             )
+            where TRequest : IRequest, new()
         {
-            return app.MapPost(pattern, CreateRequestDelegate(request));
+            return app.MapPost(pattern, CreateRequestDelegate<TRequest>);
         }
 
-        private static RequestDelegate CreateRequestDelegate<TResponse>(
-            IRequest<TResponse> instance
-            )
+        private static async Task CreateRequestDelegate<TRequest>(HttpContext ctx)
+            where TRequest : IRequest, new()
         {
-            var ctor = instance.GetType().GetConstructors()[0];
-            var newExp = Expression.New(ctor);
-            var lambda = Expression.Lambda(newExp);
-            var compiled = lambda.Compile();
-            var requestFactory = (Func<IRequest<TResponse>>)compiled;
+            var request = new TRequest();
+            var parsedRequest = await request.BindFrom(ctx);
 
-            return async ctx =>
+            var requestType = request.GetType();
+
+            var validorInterfaceType = typeof(IValidator<>).MakeGenericType(requestType);
+            var validator = (IValidator)ctx.RequestServices.GetService(validorInterfaceType);
+            if (validator != null)
             {
-                var request = requestFactory();
-                await request.BindFrom(ctx);
-
-                var requestType = request.GetType();
-
-                var validorInterfaceType = typeof(IValidator<>).MakeGenericType(requestType);
-                var validator = (IValidator) ctx.RequestServices.GetService(validorInterfaceType);
-                if(validator != null)
+                var context = new ValidationContext<object>(parsedRequest);
+                var validationResult = validator.Validate(context);
+                if (!validationResult.IsValid)
                 {
-                    var context = new ValidationContext<object>(request);
-                    var validationResult = validator.Validate(context);
-                    if (!validationResult.IsValid)
+                    var validationErrors = new Dictionary<string, string>();
+
+                    foreach (var error in validationResult.Errors)
                     {
-                        var validationErrors = new Dictionary<string, string>();
-
-                        foreach (var error in validationResult.Errors)
-                        {
-                            validationErrors[error.PropertyName] = error.ErrorMessage;
-                        }
-
-                        ctx.Response.StatusCode = 400;
-                        await ctx.Response.WriteAsJsonAsync(new
-                        {
-                            message = "failed validation.",
-                            errors = validationErrors
-                        });
-                        return;
+                        validationErrors[error.PropertyName] = error.ErrorMessage;
                     }
+
+                    ctx.Response.StatusCode = 400;
+                    await ctx.Response.WriteAsJsonAsync(new
+                    {
+                        message = "failed validation.",
+                        errors = validationErrors
+                    });
+                    return;
                 }
+            }
 
-                var handlerType = typeof(Handler<,>).MakeGenericType(requestType, typeof(TResponse));
+            var returnType = typeof(TRequest).GetInterfaces()[0].GetGenericArguments()[0];
 
-                var handler = (IHandler<TResponse>)ctx.RequestServices.GetService(handlerType);
+            var handlerType = typeof(Handler<,>).MakeGenericType(requestType, returnType);
 
-                var result = await handler.RunAsync(request);
-                await ctx.Response.WriteAsJsonAsync(result);
-            };
+            var handler = (IHandler)ctx.RequestServices.GetService(handlerType);
+
+            var result = await handler.RunAsync(parsedRequest);
+            await ctx.Response.WriteAsJsonAsync(result);
         }
 
     }

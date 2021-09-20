@@ -1,24 +1,21 @@
 ﻿using Api.Framework;
 using FluentValidation;
+using FluentValidation.Results;
 
 namespace Api.Services
 {
     public class GetBlogRequest : IRequest<Blog>
     {
-        public int Id { get; private set; }
-        public string Claim { get; private set; }
+        public int Id { get; set; }
 
-        public Task<IRequest> BindFrom(HttpContext ctx)
+        public Task BindFrom(HttpContext ctx)
         {
             var id = (string)ctx.GetRouteValue("id");
-            if (int.TryParse(id, out var idInt))
+            if(int.TryParse(id, out var idInt))
             {
                 Id = idInt;
             }
-
-            Claim = ctx.User.Claims.FirstOrDefault(x => x.Type == "test").Value;
-
-            return Task.FromResult((IRequest)this);
+            return Task.CompletedTask;
         }
     }
 
@@ -34,7 +31,7 @@ namespace Api.Services
     {
         public override Task<Blog> Run(GetBlogRequest v)
         {
-            return Task.FromResult(new Blog { Id = v.Id, Title = "wowowo w__" + v.Claim });
+            return Task.FromResult(new Blog { Id = v.Id, Title = "wowowo w__" + v.Id });
         }
     }
 }

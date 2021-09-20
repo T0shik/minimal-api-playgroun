@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MVC", "MVC\MVC.csproj", "{C
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApiModelBinding", "ApiModelBinding\ApiModelBinding.csproj", "{1FBB697A-2FDA-4619-B710-D17B2731232C}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ApiVariant", "ApiVariant\ApiVariant.csproj", "{7FBC1C6C-C4C8-4552-BD2A-DDB338D1C6A6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{1FBB697A-2FDA-4619-B710-D17B2731232C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1FBB697A-2FDA-4619-B710-D17B2731232C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1FBB697A-2FDA-4619-B710-D17B2731232C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7FBC1C6C-C4C8-4552-BD2A-DDB338D1C6A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7FBC1C6C-C4C8-4552-BD2A-DDB338D1C6A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7FBC1C6C-C4C8-4552-BD2A-DDB338D1C6A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7FBC1C6C-C4C8-4552-BD2A-DDB338D1C6A6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

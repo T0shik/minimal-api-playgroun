@@ -4,17 +4,35 @@ namespace Api.Services
 {
     public class CreateBlogRequest : IRequest<Blog>
     {
-        public Task BindFrom(HttpContext ctx)
+        public string Title { get; set; }
+
+        public async Task<IRequest> BindFrom(HttpContext ctx)
         {
-            return Task.CompletedTask;
+            return await ctx.Request.ReadFromJsonAsync<CreateBlogRequest>();
         }
     }
 
     public class CreateBlog : Handler<CreateBlogRequest, Blog>
     {
-        public override Task<Blog> Run(CreateBlogRequest v)
+        private readonly AppDbContext ctx;
+
+        public CreateBlog(AppDbContext ctx)
         {
-            throw new NotImplementedException();
+            this.ctx = ctx;
+        }
+
+        public override async Task<Blog> Run(CreateBlogRequest v)
+        {
+            var blog = new Blog
+            {
+                Title = v.Title
+            };
+
+            ctx.Add(blog);
+
+            await ctx.SaveChangesAsync();
+
+            return blog;
         }
     }
 }
